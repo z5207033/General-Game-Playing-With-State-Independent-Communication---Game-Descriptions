@@ -1,0 +1,64 @@
+% Players
+role(investigator). role(suspect1). role(suspect2).
+is_suspect(suspect1). is_suspect(suspect2).
+
+% Assignments
+assignment(innocent). assignment(guilty).
+
+% Choose assignments
+init(setup).
+
+legal(P, noop) :- true(setup), role(P), distinct(P, random)
+legal(random, assign(A, B)) :-
+    true(setup), assignment(A), assignment(B)
+
+next(assigned(A, B)) :- does(random, assign(A, B))
+next(assigned(A, B)) :- true(assigned(A, B))
+
+sees(P, was_assigned(A, B)) :-
+    does(random, assign(A, B)), is_suspect(P)
+
+% The suspects make a claim
+next(claim_phase) :- true(setup)
+
+legal(P, noop) :- true(claim_phase), role(P), not is_suspect(P)
+legal(P, claim_assignment(A, B)) :-
+    true(claim_phase), assignment(A), assignment(B), is_suspect(P)
+
+sees(investigator, claim(P, true(assigned(A, B)))) :-
+    does(P, claim_assignment(A, B))
+
+% The investigator makes a guess
+next(guess_phase) :- true(claim_phase)
+
+legal(P, noop) :- true(guess_phase), role(P), distinct(P, investigator)
+legal(investigator, guess(A, B)) :-
+    true(guess_phase), assignment(A), assignment(B)
+
+next(guessed(A, B)) :- does(investigator, guess(A, B))
+
+% Termination
+terminal :- true(guessed(A, B))
+
+is_guess_correct :- true(guessed(A, B)), true(assigned(A, B))
+
+found_guilty(suspect1) :- true(guessed(guilty, A))
+found_guilty(suspect2) :- true(guessed(A, guilty))
+
+is_guilty(suspect1) :- true(assigned(guilty, A))
+is_guilty(suspect2) :- true(assigned(A, guilty))
+
+% Investigator goals
+goal(investigator, 100) :- is_guess_correct
+goal(investigator, 0) :- terminal, not is_guess_correct
+
+% Suspect goals
+goal(P, 100) :- is_guess_correct, not is_guilty(P), is_suspect(P)
+
+goal(P, 100) :-
+    terminal, not found_guilty(Q), is_guilty(P), is_guilty(Q)
+
+goal(P, 0) :-
+    terminal, not is_guess_correct, not is_guilty(P), is_suspect(P)
+
+goal(P, 0) :- found_guilty(Q), is_guilty(P), is_guilty(Q)

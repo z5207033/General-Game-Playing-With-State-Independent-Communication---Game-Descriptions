@@ -1,0 +1,54 @@
+% Players
+role(guesser). role(observer).
+
+% Assignments
+assignment(0). $\cdots$ assignment(100).
+
+% Assign to envelopes
+init(setup).
+
+legal(P, noop) :- true(setup), role(P), distinct(P, random)
+legal(random, assign(N, M)) :-
+    true(setup), assignment(N), assignment(M)
+
+next(assigned(N, M)) :- does(random, assign(N, M))
+next(assigned(N, M)) :- true(assigned(N, M))
+
+sees(observer, was_assigned(N, M)) :- does(random, assign(N, M))
+
+amount_in_first(N) :- true(assigned(N, M))
+amount_in_second(N) :- true(assigned(M, N))
+
+% The observer makes a claim
+next(claim_phase) :- true(setup)
+
+legal(P, noop) :- true(claim_phase), role(P), distinct(P, observer)
+
+legal(observer, claim_amount_in_first(N)) :-
+    true(claim_phase), assignment(N)
+
+legal(observer, claim_amount_in_second(N)) :-
+    true(claim_phase), assignment(N)
+
+sees(guesser, claim(observer, amount_in_first(N))) :-
+    does(observer, claim_amount_in_first(N))
+
+sees(guesser, claim(observer, amount_in_second(N))) :-
+    does(observer, claim_amount_in_second(N))
+
+% The guesser chooses an envelope
+next(choosing_phase) :- true(claim_phase)
+
+legal(P, noop) :- true(choosing_phase), role(P), distinct(P, guesser)
+legal(guesser, choose_first) :- true(choosing_phase)
+legal(guesser, choose_second) :- true(choosing_phase)
+
+next(chose_first) :- does(guesser, choose_first)
+next(chose_second) :- does(guesser, choose_second)
+
+% Termination
+terminal :- true(chose_first)
+terminal :- true(chose_second)
+
+goal(P, N) :- true(chose_first), role(P), amount_in_first(N)
+goal(P, N) :- true(chose_second), role(P), amount_in_second(N)

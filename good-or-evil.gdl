@@ -1,0 +1,42 @@
+% Players
+role(guesser). role(suspect).
+
+% Assignments
+assignment(good). assignment(evil).
+
+% Choose assignment
+init(setup).
+
+legal(P, noop) :- true(setup), role(P), distinct(P, random)
+legal(random, assign(A)) :- true(setup), assignment(A)
+
+next(assigned(A)) :- does(random, assign(A))
+next(assigned(A)) :- true(assigned(A))
+
+sees(suspect, was_assigned(A)) :- does(random, assign(A))
+
+% The suspect makes a claim
+next(claim_phase) :- true(setup)
+
+legal(P, noop) :- true(claim_phase), role(P), distinct(P, suspect)
+legal(suspect, claim_to_be(A)) :- true(claim_phase), assignment(A)
+
+sees(guesser, claim(suspect, true(assigned(A)))) :-
+    does(suspect, claim_to_be(A))
+
+% The guesser makes a guess
+next(guess_phase) :- true(claim_phase)
+
+legal(P, noop) :- true(guess_phase), role(P), distinct(P, guesser)
+legal(guesser, guess(A)) :- true(guess_phase), assignment(A)
+
+next(guessed(A)) :- does(guesser, guess(A))
+
+% Termination
+terminal :- true(guessed(A))
+
+goal(guesser, 100) :- true(guessed(A)), true(assigned(A))
+goal(guesser, 0) :- true(guessed(A)), not true(assigned(A))
+
+goal(subject, 100) :- true(guessed(good))
+goal(subject, 0) :- true(guessed(evil))

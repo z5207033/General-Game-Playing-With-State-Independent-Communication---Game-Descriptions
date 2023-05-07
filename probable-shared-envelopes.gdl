@@ -1,0 +1,80 @@
+% Players
+role(observer). role(independent_guesser). role(linked_guesser).
+
+% Assignments
+envelope(first). envelope(second).
+form(allied). form(oppositional).
+
+% Assign envelope and form
+init(setup).
+
+legal(P, noop) :- true(setup), role(P), distinct(P, random)
+
+legal(random, assign(E, oppositional)) :- true(setup), envelope(E)
+legal(random, assign(E, allied)) :- true(setup), envelope(E)
+$\cdots$ % Repeated 9 times to bias the form to be allied
+legal(random, assign(E, allied)) :- true(setup), envelope(E)
+
+next(assigned(E, F)) :- does(random, assign(E, F))
+next(assigned(E, F)) :- true(assigned(E, F))
+
+sees(observer, was_assigned(E, F)) :- does(random, assign(E, F))
+sees(independent_guesser, was_assigned_form(F)) :-
+    does(random, assign(E, F))
+
+in_envelope(E) :- true(assigned(E, F))
+in_form(F) :- true(assigned(E, F))
+
+% The observer makes a claim
+next(claim_phase) :- true(setup)
+
+legal(P, noop) :- true(claim_phase), role(P), distinct(P, observer)
+legal(observer, claim_in_envelope(E)) :- true(claim_phase), envelope(E)
+
+sees(P, claim(observer, in_envelope(E))) :-
+    does(observer, claim_in_envelope(N)),
+    role(P), distinct(P, observer)
+
+% The guessers choose an envelope
+next(choosing_phase) :- true(claim_phase)
+
+legal(random, noop) :- true(choosing_phase)
+legal(observer, noop) :- true(choosing_phase)
+legal(independent_guesser, noop) :-
+    true(choosing_phase), in_form(allied)
+
+legal(linked_guesser, choose(E)) :- true(choosing_phase), envelope(E)
+legal(independent_guesser, choose(E)) :-
+    true(choosing_phase), envelope(E), in_form(oppositional)
+
+next(linked_chose(E)) :- does(linked_guesser, choose(E))
+next(independent_chose(E)) :- does(independent_guesser, choose(E))
+
+% Termination
+terminal :- true(linked_chose(E))
+
+% Allied payoffs
+goal(P, 100) :-
+    in_form(allied), true(linked_chose(E)), in_envelope(E), role(P)
+
+goal(P, 0) :-
+    in_form(allied), true(linked_chose(E)), not in_envelope(E), role(P)
+
+% Oppositional payoffs
+goal(observer, 100) :-
+    in_form(oppositional), true(linked_chose(E)), not in_envelope(E)
+
+goal(observer, 0) :-
+    in_form(oppositional), true(linked_chose(E)), in_envelope(E)
+
+goal(independent_guesser, 100) :-
+    true(independent_chose(E)), in_envelope(E)
+
+goal(independent_guesser, 0) :-
+    true(independent_chose(E)), not in_envelope(E)
+
+goal(linked_guesser, 100) :-
+    in_form(oppositional), true(linked_chose(E)), in_envelope(E)
+
+goal(linked_guesser, 0) :-
+    in_form(oppositional), true(linked_chose(E)), not in_envelope(E)
